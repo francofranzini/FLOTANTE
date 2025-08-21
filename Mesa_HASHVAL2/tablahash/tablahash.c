@@ -1,12 +1,14 @@
 #include "tablahash.h"
 #include <assert.h>
 #include <stdlib.h>
-
+#include <stdio.h>
 /**
  * Casillas en la que almacenaremos los datos de la tabla hash.
  */
 typedef struct {
   void *dato;
+  AVL rebalse;
+  int rs;
 } CasillaHash;
 
 /**
@@ -44,6 +46,9 @@ TablaHash tablahash_crear(unsigned capacidad, FuncionCopiadora copia,
   // Inicializamos las casillas con datos nulos.
   for (unsigned idx = 0; idx < capacidad; ++idx) {
     tabla->elems[idx].dato = NULL;
+    //Lineas que hay que agregar 
+    tabla->elems[idx].rebalse = avl_crear(tabla->copia, tabla->comp, tabla->destr);
+    tabla->elems[idx].rs = 0;
   }
 
   return tabla;
@@ -65,9 +70,11 @@ int tablahash_capacidad(TablaHash tabla) { return tabla->capacidad; }
 void tablahash_destruir(TablaHash tabla) {
 
   // Destruir cada uno de los datos.
-  for (unsigned idx = 0; idx < tabla->capacidad; ++idx)
+  for (unsigned idx = 0; idx < tabla->capacidad; ++idx){
     if (tabla->elems[idx].dato != NULL)
       tabla->destr(tabla->elems[idx].dato);
+    avl_destruir(tabla->elems[idx].rebalse);
+  }
 
   // Liberar el arreglo de casillas y la tabla.
   free(tabla->elems);
@@ -96,8 +103,23 @@ void tablahash_insertar(TablaHash tabla, void *dato) {
     tabla->elems[idx].dato = tabla->copia(dato);
     return;
   }
-  // No hacer nada si hay colision.
+  // ir al arbol de rebalse
   else {
+    //Si esta en el arbol de rebalse, eliminamos y agregamos nuevamente
+    if(avl_buscar(tabla->elems[idx].rebalse, dato) == 1){
+      avl_eliminar(tabla->elems[idx].rebalse, dato);
+      avl_insertar(tabla->elems[idx].rebalse, dato);
+    }
+    else{
+      avl_insertar(tabla->elems[idx].rebalse, dato);
+      tabla->numElems++;
+      tabla->elems[idx].rs++;
+    }
+    if(tabla->elems[idx].rs > tabla->numElems * 0.15){
+      
+      tablahash_redimensionar(tabla);
+    }
+
     return;
   }
 }
@@ -135,9 +157,50 @@ void tablahash_eliminar(TablaHash tabla, void *dato) {
     return;
   // Vaciar la casilla si hay coincidencia.
   else if (tabla->comp(tabla->elems[idx].dato, dato) == 0) {
+    //Eliminacion del dato en casilla
     tabla->numElems--;
     tabla->destr(tabla->elems[idx].dato);
-    tabla->elems[idx].dato = NULL;
+    //Reocupar la casilla con el rebalse
+    if(tabla->elems[idx].rs == 0)
+      //No hay rebalse para ocupar la casilla
+      tabla->elems[idx].dato = NULL;
+    else{
+      //Asignamos la raiz a la casilla
+      void* dato_raiz = avl_raiz(tabla->elems[idx].rebalse);
+      tabla->elems[idx].dato = tabla->copia(dato_raiz);
+      //Eliminamos el dato del rebalse
+      avl_eliminar(tabla->elems[idx].rebalse, dato_raiz);
+      tabla->elems[idx].rs--;
+    }
     return;
   }
+  else if(avl_buscar(tabla->elems[idx].rebalse, dato) == 1){
+    //Eliminacion de dato en rebalse
+    tabla->numElems--;
+    avl_eliminar(tabla->elems[idx].rebalse, dato);
+    tabla->elems[idx].rs--;
+  }
+}
+
+void tablahash_redimensionar(TablaHash tabla){
+  TablaHash nueva_tabla = tablahash_crear(
+    tabla->capacidad*2,
+    tabla->copia,
+    tabla->comp,
+    tabla->destr,
+    tabla->hash
+  );
+  for(int i = 0; i<tabla->capacidad; i++){
+    //Aqui va un while ya que eliminar reocupa la casilla a la vez que vacia el rebalse
+    while(tabla->elems[i].dato != NULL){
+      tablahash_insertar(nueva_tabla, tabla->elems[i].dato);
+      tablahash_eliminar(tabla, tabla->elems[i].dato);
+    }
+    avl_destruir(tabla->elems[i].rebalse);
+  }
+  free(tabla->elems);
+  tabla->capacidad = nueva_tabla->capacidad;
+  tabla->elems = nueva_tabla->elems;
+  tabla->numElems = nueva_tabla->numElems;
+  free(nueva_tabla);
 }

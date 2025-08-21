@@ -136,9 +136,14 @@ static AVL_Nodo* avl_nodo_rotacion_simple_izq(AVL_Nodo* raiz) {
  * a derecha y retorna la nueva raiz.
  */
 static AVL_Nodo* avl_nodo_rotacion_simple_der(AVL_Nodo* raiz) {
-  /** COMPLETAR */
-  assert(0);
-  return raiz;
+  
+  AVL_Nodo* hijoIzq = raiz->izq;
+  raiz->izq = hijoIzq->der;
+  hijoIzq->der = raiz;
+
+  raiz->altura = 1 + avl_nodo_max_altura_hijos(raiz);
+  hijoIzq->altura = 1 + avl_nodo_max_altura_hijos(raiz);
+  return hijoIzq;
 }
 
 /**
@@ -252,4 +257,69 @@ static void avl_nodo_recorrer(AVL_Nodo* raiz, AVLRecorrido orden,
 void avl_recorrer(AVL arbol, AVLRecorrido orden, FuncionVisitanteExtra visita,
   void* extra) {
   avl_nodo_recorrer(arbol->raiz, orden, visita, extra);
+}
+
+AVL_Nodo* avl_nodo_rebalancear(AVL_Nodo* raiz){
+  int factor = avl_nodo_factor_balance(raiz);
+  if(factor == 2){
+    if(avl_nodo_factor_balance(raiz->der) == -1)
+      raiz->der = avl_nodo_rotacion_simple_der(raiz->der);
+    raiz = avl_nodo_rotacion_simple_izq(raiz);
+  }
+  if(factor == -2){
+    if(avl_nodo_factor_balance(raiz->izq) == 1)
+      raiz->izq = avl_nodo_rotacion_simple_izq(raiz->izq);
+    raiz = avl_nodo_rotacion_simple_der(raiz);
+  }
+}
+
+
+void* avl_minimo(AVL_Nodo* raiz){
+  if(raiz->izq == NULL) return raiz->dato;
+  else return avl_minimo(raiz->izq);
+}
+void d_aux(void* dato){
+  (void*)dato;
+  return;
+}
+AVL_Nodo* avl_nodo_eliminar(AVL_Nodo* raiz, FuncionComparadora c,FuncionDestructora d, void* dato){
+  if(raiz == NULL) return NULL;
+  if(c(raiz->dato, dato) > 0) raiz->izq = avl_nodo_eliminar(raiz->izq, c, d, dato);
+  if(c(raiz->dato, dato) < 0) raiz->der = avl_nodo_eliminar(raiz->der, c, d, dato);
+  if(c(raiz->dato, dato) == 0){
+    if(raiz->izq == NULL && raiz->der == NULL){
+      d(raiz->dato);
+      free(raiz);
+      return NULL;
+    }
+    if(raiz->izq == NULL && raiz->der != NULL){
+      AVL_Nodo* hijoDer = raiz->der;
+      d(raiz->dato);
+      free(raiz);
+      return hijoDer;
+    }
+    if(raiz->izq != NULL && raiz->der == NULL){
+      AVL_Nodo* hijoIzq = raiz->izq;
+      d(raiz->dato);
+      free(raiz);
+      return hijoIzq;
+    }
+    if(raiz->izq != NULL && raiz->der != NULL){
+      d(raiz->dato);
+      raiz->dato = avl_minimo(raiz->der);
+      raiz->der = avl_nodo_eliminar(raiz->der, c, d_aux, raiz->dato);
+    }
+
+    raiz->altura = 1 + avl_nodo_max_altura_hijos(raiz);
+    raiz = avl_nodo_rebalancear(raiz);
+    return raiz;
+  }
+}
+
+void avl_eliminar(AVL arbol, void* dato){
+  arbol->raiz = avl_nodo_eliminar(arbol->raiz, arbol->comp, arbol->destr, dato);
+}
+
+void* avl_raiz(AVL arbol){
+  return arbol->raiz->dato;
 }

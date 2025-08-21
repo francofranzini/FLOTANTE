@@ -1,6 +1,6 @@
 #ifndef __TABLAHASH_H__
 #define __TABLAHASH_H__
-
+#include "../avl/avl.h"
 typedef void *(*FuncionCopiadora)(void *dato);
 /** Retorna una copia fisica del dato */
 typedef int (*FuncionComparadora)(void *dato1, void *dato2);
@@ -50,5 +50,7 @@ void *tablahash_buscar(TablaHash tabla, void *dato);
  * Elimina el dato de la tabla que coincida con el dato dado.
  */
 void tablahash_eliminar(TablaHash tabla, void *dato);
+
+void tablahash_redimensionar(TablaHash tabla);
 
 #endif /* __TABLAHASH_H__ */
