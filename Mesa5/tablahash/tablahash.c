@@ -7,6 +7,8 @@
  */
 typedef struct {
   void *dato;
+  int eliminado;
+
 } CasillaHash;
 
 /**
@@ -44,6 +46,7 @@ TablaHash tablahash_crear(unsigned capacidad, FuncionCopiadora copia,
   // Inicializamos las casillas con datos nulos.
   for (unsigned idx = 0; idx < capacidad; ++idx) {
     tabla->elems[idx].dato = NULL;
+    tabla->elems[idx].eliminado = 0;
   }
 
   return tabla;
@@ -77,7 +80,7 @@ void tablahash_destruir(TablaHash tabla) {
 
 /**
  * Inserta un dato en la tabla, o lo reemplaza si ya se encontraba.
- * IMPORTANTE: La implementacion no maneja colisiones.
+ * IMPORTANTE: La implementacion maneja colisiones.
  */
 void tablahash_insertar(TablaHash tabla, void *dato) {
 
@@ -88,25 +91,33 @@ void tablahash_insertar(TablaHash tabla, void *dato) {
   if (tabla->elems[idx].dato == NULL) {
     tabla->numElems++;
     tabla->elems[idx].dato = tabla->copia(dato);
-    return;
+    tabla->elems[idx].eliminado = 0;
   }
-  // Sobrescribir el dato si el mismo ya se encontraba en la tabla.
-  else if (tabla->comp(tabla->elems[idx].dato, dato) == 0) {
-    tabla->destr(tabla->elems[idx].dato);
-    tabla->elems[idx].dato = tabla->copia(dato);
-    return;
-  }
-  // No hacer nada si hay colision.
   else {
-    return;
+    while(tabla->elems[idx].dato != NULL){
+      if(tabla->comp(tabla->elems[idx].dato, dato) == 0){
+        tabla->destr(tabla->elems[idx].dato);
+        tabla->elems[idx].dato = tabla->copia(dato);
+        return;
+      }
+      else
+        idx = (idx+1)%tabla->capacidad;
+    } 
+    //llegamos a tabla->elems[idx] == NULL;
+    tabla->numElems++;
+    tabla->elems[idx].dato = tabla->copia(dato);
+    tabla->elems[idx].eliminado = 0;
   }
+  
+
+  if((float)tabla->numElems > (float)tabla->capacidad*0.75) tablahash_redimensionar(tabla);
 }
 
 /**
  * Retorna el dato de la tabla que coincida con el dato dado, o NULL si el dato
  * buscado no se encuentra en la tabla.
  */
-void *tablahash_buscar(TablaHash tabla, void *dato) {
+void* tablahash_buscar(TablaHash tabla, void *dato) {
 
   // Calculamos la posicion del dato dado, de acuerdo a la funcion hash.
   unsigned idx = tabla->hash(dato) % tabla->capacidad;
@@ -115,11 +126,30 @@ void *tablahash_buscar(TablaHash tabla, void *dato) {
   if (tabla->elems[idx].dato == NULL)
     return NULL;
   // Retornar el dato de la casilla si hay concidencia.
-  else if (tabla->comp(tabla->elems[idx].dato, dato) == 0)
-    return tabla->elems[idx].dato;
-  // Retornar NULL en otro caso.
-  else
+  else {
+
+    int inicio = idx;
+    /*
+      Hacemos una iteracion por fuera del bucle para probar la situacion inicial
+      y de manera segura seguir en el bucle evitando bucle infinito
+    */
+    if(tabla->elems[idx].dato != NULL && tabla->comp(tabla->elems[idx].dato, dato) == 0)
+      return tabla->elems[idx].dato;
+    if(tabla->elems[idx].dato == NULL && tabla->elems[idx].eliminado == 0)
+        return NULL; //Encontre una casilla que no encadena
+
+    idx++;
+
+    while(idx != inicio){
+      if(tabla->elems[idx].dato != NULL && tabla->comp(tabla->elems[idx].dato, dato) == 0)
+        return tabla->elems[idx].dato;
+      if(tabla->elems[idx].dato == NULL && tabla->elems[idx].eliminado == 0)
+        return NULL; //Encontre una casilla que no encadena
+
+      idx = (idx + 1) % tabla->capacidad;
+    }
     return NULL;
+  }
 }
 
 /**
@@ -131,13 +161,57 @@ void tablahash_eliminar(TablaHash tabla, void *dato) {
   unsigned idx = tabla->hash(dato) % tabla->capacidad;
 
   // Retornar si la casilla estaba vacia.
-  if (tabla->elems[idx].dato == NULL)
+  if (tabla->elems[idx].dato == NULL && tabla->elems[idx].eliminado == 0)
     return;
   // Vaciar la casilla si hay coincidencia.
-  else if (tabla->comp(tabla->elems[idx].dato, dato) == 0) {
-    tabla->numElems--;
-    tabla->destr(tabla->elems[idx].dato);
-    tabla->elems[idx].dato = NULL;
-    return;
+  else {
+    // 
+    int inicio = idx;
+    if(tabla->elems[idx].dato != NULL && tabla->comp(tabla->elems[idx].dato, dato) == 0){
+      tabla->destr(tabla->elems[idx].dato);
+      tabla->elems[idx].dato = NULL;
+      tabla->elems[idx].eliminado = 1;
+      tabla->numElems--;
+      return;
+    }
+    if(tabla->elems[idx].dato == NULL && tabla->elems[idx].eliminado == 0) 
+      return;
+    idx = (idx + 1)%tabla->capacidad;
+
+    while(idx != inicio){
+      if(tabla->elems[idx].dato != NULL && tabla->comp(tabla->elems[idx].dato, dato) == 0){
+        tabla->destr(tabla->elems[idx].dato);
+        tabla->elems[idx].dato = NULL;
+        tabla->elems[idx].eliminado = 1;
+        tabla->numElems--;
+        return;
+      }
+      if(tabla->elems[idx].dato == NULL && tabla->elems[idx].eliminado == 0) 
+        return;
+      idx = (idx+1)%tabla->capacidad;
+    }
   }
+  
+}
+
+void tablahash_redimensionar(TablaHash tabla){
+  TablaHash nt = tablahash_crear(
+    tabla->capacidad*2,
+    tabla->copia,
+    tabla->comp,
+    tabla->destr,
+    tabla->hash
+  );
+  for(int i = 0; i<tabla->capacidad; i++){
+    if(tabla->elems[i].dato != NULL){
+      tablahash_insertar(nt, tabla->elems[i].dato);
+      // tabla->destr(tabla->elems[i].dato);
+      tablahash_eliminar(tabla, tabla->elems[i].dato);
+    }
+  }
+  free(tabla->elems);
+  tabla->elems = nt->elems;
+  tabla->numElems = nt->numElems;
+  tabla->capacidad = nt->capacidad;
+  free(nt);
 }
