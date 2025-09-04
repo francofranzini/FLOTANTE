@@ -42,7 +42,7 @@ unsigned persona_hash(Persona* p){
 
 int main(){
   
-  int size = 7;
+  int size = 4;
   
   TablaHash tabla = tablahash_crear(
     size,
@@ -122,15 +122,15 @@ printf("Hash0: %i\n Hash1: %i\nHash2: %i\nHash3: %i\nHash4: %i\nHash5: %i\n", pe
   tablahash_insertar(tabla, p5);
   assert(tablahash_nelems(tabla) == 6);
 
-  assert(tablahash_buscar(tabla, p4) != NULL);
+  assert(tablahash_buscar(tabla, p5) != NULL);
   
   tablahash_eliminar(tabla, p2);
 
-  assert(tablahash_buscar(tabla, p4) != NULL);
+  assert(tablahash_buscar(tabla, p5) != NULL);
 
   tablahash_redimensionar(tabla);
 
-  assert(tablahash_capacidad(tabla) == 14);
+  assert(tablahash_capacidad(tabla) == 8);
 
 
 

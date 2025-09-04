@@ -1,7 +1,7 @@
 #include "tablahash.h"
 #include <assert.h>
 #include <stdlib.h>
-
+#include <stdio.h>
 /**
  * Casillas en la que almacenaremos los datos de la tabla hash.
  */
