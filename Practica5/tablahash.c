@@ -97,21 +97,24 @@ void tablahash_insertar(TablaHash tabla, void *dato) {
   }
   // Sobrescribir el dato si el mismo ya se encontraba en la tabla.
   else{
-    while(tabla->elems[idx].sig != -1){
-    if(tabla->comp(tabla->elems[idx].dato, dato) == 0){
-      tabla->destr(tabla->elems[idx].dato);
-      tabla->elems[idx].dato = tabla->copia(dato);
-      return;
-    }
-    else if(tabla->elems[idx].dato == NULL){
-      tabla->numElems++;
-      tabla->elems[idx].dato = tabla->copia(dato);
-      return;
-    }
-    else
-      idx = tabla->elems[idx].sig;
-    }
     unsigned ultimo = idx;
+    while(idx != -1){
+      if(tabla->comp(tabla->elems[idx].dato, dato) == 0){
+        tabla->destr(tabla->elems[idx].dato);
+        tabla->elems[idx].dato = tabla->copia(dato);
+        return;
+      }
+      else if(tabla->elems[idx].dato == NULL){
+        tabla->numElems++;
+        tabla->elems[idx].dato = tabla->copia(dato);
+        return;
+      }
+      else{
+        ultimo = idx;
+        idx = tabla->elems[idx].sig;
+      }
+    }
+    idx = ultimo;
     while(tabla->elems[idx].dato != NULL)
       idx = (idx + 1)%tabla->capacidad;
     tabla->elems[ultimo].sig = idx;
@@ -135,7 +138,7 @@ void *tablahash_buscar(TablaHash tabla, void *dato) {
       return tabla->elems[idx].dato;
     idx = tabla->elems[idx].sig;
   }
-  return;
+  return NULL;
 }
 
 /**
@@ -149,6 +152,7 @@ void tablahash_eliminar(TablaHash tabla, void *dato) {
   while(idx != -1){
     if(tabla->elems[idx].dato != NULL && tabla->comp(tabla->elems[idx].dato, dato) == 0){
       tabla->destr(tabla->elems[idx].dato);
+      tabla->elems[idx].dato = NULL; 
       tabla->numElems--;
       return;
     }
