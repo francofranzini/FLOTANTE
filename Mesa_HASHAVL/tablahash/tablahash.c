@@ -112,7 +112,6 @@ void tablahash_insertar(TablaHash tabla, void *dato) {
       avl_insertar(tabla->elems[idx].rebalse, dato);
       tabla->numElems++;
       if(avl_nnodos(tabla->elems[idx].rebalse) > tabla->numElems * 0.15){
-        printf("AVL_NNODOS: %i\n", avl_nnodos(tabla->elems[idx].rebalse));
         tablahash_redimensionar(tabla);
       }
     }
@@ -155,8 +154,8 @@ void tablahash_eliminar(TablaHash tabla, void *dato) {
   else if (tabla->comp(tabla->elems[idx].dato, dato) == 0) {
     tabla->numElems--;
     tabla->destr(tabla->elems[idx].dato);
-    if(avl_nnodos(tabla->elems[idx].rebalse) > 0){
-      void* dato_raiz = avl_raiz(tabla->elems[idx].rebalse);
+    if(tabla->elems[idx].rebalse != NULL){
+      void* dato_raiz = avl_minimo(tabla->elems[idx].rebalse);
       tabla->elems[idx].dato = tabla->copia(dato_raiz);
       avl_eliminar(tabla->elems[idx].rebalse, dato_raiz);
     }
@@ -174,14 +173,23 @@ void tablahash_eliminar(TablaHash tabla, void *dato) {
   }
 }
 
+void* copia_dummy(void* dato){
+  return dato;
+}
+void destr_dummy(void* dato){
+  (void*)dato;
+  return;
+}
+
 void tablahash_redimensionar(TablaHash tabla){
   TablaHash nueva_tabla = tablahash_crear(
     tabla->capacidad*2,
-    tabla->copia,
+    copia_dummy,
     tabla->comp,
     tabla->destr,
     tabla->hash
   );
+  tabla->destr = destr_dummy;
   for(int i = 0; i<tabla->capacidad; i++){
     while(tabla->elems[i].dato != NULL){
       tablahash_insertar(nueva_tabla, tabla->elems[i].dato);
@@ -189,6 +197,7 @@ void tablahash_redimensionar(TablaHash tabla){
     }  
   }
   free(tabla->elems);
+  tabla->destr = nueva_tabla->destr;
   tabla->capacidad = nueva_tabla->capacidad;
   tabla->numElems = nueva_tabla->numElems;
   tabla->elems = nueva_tabla->elems;
