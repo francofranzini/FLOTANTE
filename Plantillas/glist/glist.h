@@ -44,5 +44,7 @@ int glist_buscar(GList list, void* data, FuncionComparar);
  */
 void glist_recorrer(GList list, FuncionVisitante);
 
+int glist_nnodos(GList list);
+
 
 #endif /* __GLIST_H__ */

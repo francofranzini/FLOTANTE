@@ -349,6 +349,10 @@ void avl_eliminar(AVL arbol, void* dato){
   arbol->raiz = avl_nodo_eliminar(arbol->raiz, arbol->destr, arbol->comp,  dato);
 }
 
+void avl_eliminar_sim(AVL arbol, void* dato){
+  arbol->raiz = avl_nodo_eliminar(arbol->raiz, destr_aux, arbol->comp, dato);
+}
+
 void* avl_raiz(AVL arbol){
   return arbol->raiz->dato;
 }

@@ -48,6 +48,8 @@ void avl_recorrer(AVL, AVLRecorrido, FuncionVisitanteExtra, void *);
 
 void avl_eliminar(AVL arbol, void* dato);
 
+void avl_eliminar_sim(AVL arbol, void* dato);
+
 int avl_nnodos(AVL raiz);
 
 void* avl_raiz(AVL arbol);

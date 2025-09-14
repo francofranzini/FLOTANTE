@@ -60,5 +60,13 @@ void glist_recorrer(GList list, FuncionVisitante visit) {
 }
 
 
+int glist_nnodos(GList list){
+  if(list == NULL)
+    return 0;
+  else return 1 + glist_nnodos(list->next);
+}
+
+
+
 
 
